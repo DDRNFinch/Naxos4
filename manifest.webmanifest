@@ -1,18 +1,11 @@
 {
-  "name": "Naxos 16",
-  "short_name": "Naxos 16",
-  "description": "Naxos 16 course mapping and evidence capture app",
-  "start_url": "./?v=16",
+  "name": "Naxos 17",
+  "short_name": "Naxos 17",
+  "description": "Naxos 17 course mapping and evidence capture app",
+  "start_url": "./?v=17",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f5f5f2",
   "theme_color": "#171717",
-  "icons": [
-    {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ]
+  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
 }
