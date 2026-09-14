@@ -1,8 +1,8 @@
 {
-  "name": "Naxos 15",
-  "short_name": "Naxos 15",
-  "description": "Naxos 15 course mapping app",
-  "start_url": "./",
+  "name": "Naxos 16",
+  "short_name": "Naxos 16",
+  "description": "Naxos 16 course mapping and evidence capture app",
+  "start_url": "./?v=16",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f5f5f2",
