@@ -1,7 +1,7 @@
 {
-  "name": "Naxos 4",
-  "short_name": "Naxos 4",
-  "description": "Naxos 4 course mapping app",
+  "name": "Naxos 15",
+  "short_name": "Naxos 15",
+  "description": "Naxos 15 course mapping app",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
