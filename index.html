@@ -2,18 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Naxos 4</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#171717">
+<meta name="description" content="Naxos 4 course mapping app">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
+<title>Naxos 4</title>
 </head>
 <body>
-<header><h1>Naxos 4</h1><p>Course mapping</p></header>
+<header>
+  <div><h1>Naxos 4</h1><p>Course mapping</p></div>
+  <button id="install" hidden>Install app</button>
+</header>
 <main id="app"></main>
 <script src="courses.js"></script>
 <script>
 const app=document.getElementById('app');
+const installButton=document.getElementById('install');
 const cols=[['A','6 Photos'],['B','Statement to column A'],['C','1 Photo'],['D','Statement to column C'],['E','Supporting Photo'],['F','Statement to column E'],['G','Audio recorded answer'],['H','Reflection from learner']];
-function esc(v){return String(v).replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#92;'}[m]));}
+function esc(v){return String(v).replace(/[&<>\\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#92;'}[m]));}
 function render(c){
   app.innerHTML=`<section class="courses">${window.NAXOS4_COURSES.map((x,i)=>`<button class="course ${i===0?'active':''}" data-i="${i}">${esc(x.title)}<small>${esc(x.standard)} v${esc(x.version)}</small></button>`).join('')}</section><section id="course"></section>`;
   const buttons=[...document.querySelectorAll('.course')];
@@ -22,6 +30,10 @@ function render(c){
 }
 function show(c){document.getElementById('course').innerHTML=`<div class="title"><h2>${esc(c.title)}</h2><span>${esc(c.standard)} · v${esc(c.version)}</span></div><div class="table-wrap"><table><thead><tr><th>Unit</th>${cols.map(x=>`<th>${x[0]}<small>${x[1]}</small></th>`).join('')}</tr></thead><tbody>${c.units.map(u=>`<tr><th>${esc(u.unit)}</th>${['A','B','C','D','E','F','G','H'].map(k=>`<td>${esc(u[k])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;}
 render(window.NAXOS4_COURSES[0]);
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installButton.hidden=false;});
+installButton.onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installButton.hidden=true;};
+if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
 </script>
 </body>
 </html>
