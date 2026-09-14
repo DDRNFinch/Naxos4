@@ -4,36 +4,113 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#171717">
-<meta name="description" content="Naxos 4 course mapping app">
+<meta name="description" content="Naxos 4 evidence capture app">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
 <title>Naxos 4</title>
 </head>
 <body>
-<header>
-  <div><h1>Naxos 4</h1><p>Course mapping</p></div>
-  <button id="install" hidden>Install app</button>
+<header class="app-header">
+  <button id="back" class="back" hidden aria-label="Back">‹</button>
+  <div><h1>Naxos 4</h1><p id="header-sub">Choose a course</p></div>
+  <button id="install" hidden>Install</button>
 </header>
 <main id="app"></main>
+<input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
 <script src="courses.js"></script>
 <script>
 const app=document.getElementById('app');
-const installButton=document.getElementById('install');
-const cols=[['A','6 Photos'],['B','Statement to column A'],['C','1 Photo'],['D','Statement to column C'],['E','Supporting Photo'],['F','Statement to column E'],['G','Audio recorded answer'],['H','Reflection from learner']];
-function esc(v){return String(v).replace(/[&<>\\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#92;'}[m]));}
-function render(c){
-  app.innerHTML=`<section class="courses">${window.NAXOS4_COURSES.map((x,i)=>`<button class="course ${i===0?'active':''}" data-i="${i}">${esc(x.title)}<small>${esc(x.standard)} v${esc(x.version)}</small></button>`).join('')}</section><section id="course"></section>`;
-  const buttons=[...document.querySelectorAll('.course')];
-  buttons.forEach(b=>b.onclick=()=>{buttons.forEach(x=>x.classList.remove('active'));b.classList.add('active');show(window.NAXOS4_COURSES[Number(b.dataset.i)]);});
-  show(c);
-}
-function show(c){document.getElementById('course').innerHTML=`<div class="title"><h2>${esc(c.title)}</h2><span>${esc(c.standard)} · v${esc(c.version)}</span></div><div class="table-wrap"><table><thead><tr><th>Unit</th>${cols.map(x=>`<th>${x[0]}<small>${x[1]}</small></th>`).join('')}</tr></thead><tbody>${c.units.map(u=>`<tr><th>${esc(u.unit)}</th>${['A','B','C','D','E','F','G','H'].map(k=>`<td>${esc(u[k])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;}
-render(window.NAXOS4_COURSES[0]);
+const back=document.getElementById('back');
+const headerSub=document.getElementById('header-sub');
+const cameraInput=document.getElementById('cameraInput');
+let route={page:'home',course:null,unit:null,photo:null};
 let deferredPrompt;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installButton.hidden=false;});
-installButton.onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installButton.hidden=true;};
-if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
+const PHOTO_LABELS=['Prep','Start','During','Finish','Checks','Extras'];
+const colIndex={A:1,B:2,C:3,D:4,E:5,F:6,G:7,H:8};
+
+function esc(v){return String(v??'').replace(/[&<>\\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#92;'}[m]));}
+function mapping(unit,key){return unit[colIndex[key]]||'';}
+function cleanMapping(value){return String(value).replace(/^[A-H]\d*:\s*/,'');}
+function keyFor(c,u){return 'naxos4:'+c.id+':'+u[0];}
+function load(c,u){try{return JSON.parse(localStorage.getItem(keyFor(c,u))||'{}')}catch{return {}}}
+function save(c,u,data){localStorage.setItem(keyFor(c,u),JSON.stringify(data));}
+function courseById(id){return window.NAXOS4_COURSES.find(c=>c.id===id)}
+function unitByIndex(c,i){return c.units[i]}
+function setHeader(title,sub){document.querySelector('.app-header h1').textContent=title;headerSub.textContent=sub||'';back.hidden=route.page==='home'}
+function nav(page,course=null,unit=null){route={page,course,unit,photo:null};render()}
+
+function render(){
+  if(route.page==='home') renderHome();
+  if(route.page==='units') renderUnits();
+  if(route.page==='photos') renderPhotos();
+  if(route.page==='support') renderSupport();
+  if(route.page==='audio') renderAudio();
+}
+
+function renderHome(){
+  setHeader('Naxos 4','Choose a course');
+  app.innerHTML=`<section class="home"><div class="hero"><h2>Courses</h2><p>Select your apprenticeship course to view its units.</p></div><div class="course-tabs">${window.NAXOS4_COURSES.map((c,i)=>`<button class="course-tab" data-course="${esc(c.id)}"><strong>${esc(c.title)}</strong><span>${esc(c.standard)} · v${esc(c.version)}</span><small>${c.units.length} units</small></button>`).join('')}</div></section>`;
+  document.querySelectorAll('.course-tab').forEach(b=>b.onclick=()=>nav('units',courseById(b.dataset.course)));
+}
+
+function renderUnits(){
+  const c=route.course; setHeader(c.title,`${c.standard} · v${c.version}`);
+  app.innerHTML=`<section class="page"><div class="page-heading"><h2>Units</h2><p>Select a unit to begin the evidence capture.</p></div><div class="unit-list">${c.units.map((u,i)=>{const d=load(c,u);const complete=d.finished;return `<button class="unit-card" data-unit="${i}"><span class="unit-number">${i+1}</span><span class="unit-copy"><strong>${esc(u[0])}</strong><small>${complete?'Completed':'6 photos · statement · supporting evidence · audio'}</small></span><span class="chevron">›</span></button>`}).join('')}</div></section>`;
+  document.querySelectorAll('.unit-card').forEach(b=>b.onclick=()=>nav('photos',c,unitByIndex(c,Number(b.dataset.unit))));
+}
+
+function photoBox(c,u,i,data){
+  const src=data.photos?.[i];
+  return `<button class="photo-box ${src?'has-photo':''}" data-photo="${i}" aria-label="${PHOTO_LABELS[i]} photo">${src?`<img src="${src}" alt="${PHOTO_LABELS[i]} evidence photo"><span class="photo-retake">Retake</span>`:`<span class="photo-number">${i+1}</span><strong>${PHOTO_LABELS[i]}</strong><small>Tap to take photo</small>`}</button>`;
+}
+function renderPhotos(){
+  const c=route.course,u=route.unit,d=load(c,u); setHeader(u[0],`${c.title} · Photo evidence`);
+  app.innerHTML=`<section class="page evidence-page"><div class="page-heading"><p class="step">STEP 1 OF 3</p><h2>Photo evidence</h2><p>Capture the work from preparation through to completion.</p></div><div class="photo-grid">${PHOTO_LABELS.map((_,i)=>photoBox(c,u,i,d)).join('')}</div><label class="field-label" for="statement">Overall learner statement</label><textarea id="statement" class="text-input" placeholder="Describe what you did, how you did it and the outcome...">${esc(d.statement||'')}</textarea><button id="nextPhotos" class="primary">Next <span>›</span></button></section>`;
+  document.querySelectorAll('.photo-box').forEach(b=>b.onclick=()=>openCamera(Number(b.dataset.photo)));
+  document.getElementById('statement').oninput=e=>{const x=load(c,u);x.statement=e.target.value;save(c,u,x)};
+  document.getElementById('nextPhotos').onclick=()=>nav('support',c,u);
+}
+
+function openCamera(index){route.photo=index;cameraInput.value='';cameraInput.click();}
+cameraInput.onchange=()=>{const file=cameraInput.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const c=route.course,u=route.unit,x=load(c,u);x.photos=x.photos||[];x.photos[route.photo]=reader.result;save(c,u,x);renderPhotos()};reader.readAsDataURL(file)};
+
+function renderSupport(){
+  const c=route.course,u=route.unit,d=load(c,u); setHeader(u[0],`${c.title} · Supporting evidence`);
+  app.innerHTML=`<section class="page evidence-page"><div class="page-heading"><p class="step">STEP 2 OF 3</p><h2>Supporting evidence</h2><p>Take one photo for Column C and one for Column E, then answer the related questions.</p></div><div class="support-grid"><div class="support-item"><div class="support-photo-wrap"><button class="support-photo ${d.supportC?'has-photo':''}" data-support="C">${d.supportC?`<img src="${d.supportC}" alt="Column C evidence"><span>Retake</span>`:`<strong>Column C</strong><small>Tap to take photo</small>`}</button></div><div class="mapping"><span>Column C</span><p>${esc(cleanMapping(mapping(u,'C')))}</p></div><label class="field-label" for="answerD">Question relating to Column D</label><p class="question">How did you apply this when completing the work?</p><textarea id="answerD" class="text-input" placeholder="Type your answer...">${esc(d.answerD||'')}</textarea></div><div class="support-item"><div class="support-photo-wrap"><button class="support-photo ${d.supportE?'has-photo':''}" data-support="E">${d.supportE?`<img src="${d.supportE}" alt="Column E evidence"><span>Retake</span>`:`<strong>Column E</strong><small>Tap to take photo</small>`}</button></div><div class="mapping"><span>Column E</span><p>${esc(cleanMapping(mapping(u,'E')))}</p></div><label class="field-label" for="answerF">Question relating to Column F</label><p class="question">What method, technique or knowledge did you use to complete this?</p><textarea id="answerF" class="text-input" placeholder="Type your answer...">${esc(d.answerF||'')}</textarea></div></div><button id="nextSupport" class="primary">Next <span>›</span></button></section>`;
+  document.querySelectorAll('.support-photo').forEach(b=>b.onclick=()=>{route.photo=b.dataset.support;cameraInput.value='';cameraInput.click()});
+  document.getElementById('answerD').oninput=e=>{const x=load(c,u);x.answerD=e.target.value;save(c,u,x)};
+  document.getElementById('answerF').oninput=e=>{const x=load(c,u);x.answerF=e.target.value;save(c,u,x)};
+  cameraInput.onchange=()=>{const file=cameraInput.files?.[0];if(!file)return;const target=route.photo;const reader=new FileReader();reader.onload=()=>{const x=load(c,u);x['support'+target]=reader.result;save(c,u,x);renderSupport()};reader.readAsDataURL(file)};
+  document.getElementById('nextSupport').onclick=()=>nav('audio',c,u);
+}
+
+let recorder=null,audioChunks=[];
+function renderAudio(){
+  const c=route.course,u=route.unit,d=load(c,u); setHeader(u[0],`${c.title} · Audio & reflection`);
+  app.innerHTML=`<section class="page evidence-page"><div class="page-heading"><p class="step">STEP 3 OF 3</p><h2>Audio & reflection</h2><p>Answer the Column G question in your own words. Aim for around 30 seconds.</p></div><div class="audio-card"><span class="mapping-label">Column G</span><p class="mapping-text">${esc(cleanMapping(mapping(u,'G')))}</p><h3>Tell us how you applied this to your work.</h3><button id="record" class="record-button">● <span>${d.audio?'Record again':'Start recording'}</span></button><p id="recordStatus" class="record-status">${d.audio?'Audio answer saved.':'Recommended answer: about 30 seconds.'}</p><audio id="audioPlayback" controls ${d.audio?'':'hidden'} src="${d.audio||''}"></audio></div><div class="reflection"><label class="field-label" for="reflection">Reflection</label><div class="mapping"><span>Column H</span><p>${esc(cleanMapping(mapping(u,'H')))}</p></div><p class="question">How did you demonstrate this during the task?</p><textarea id="reflection" class="text-input" placeholder="Write your reflection...">${esc(d.reflection||'')}</textarea></div><button id="finish" class="primary">Finish <span>✓</span></button></section>`;
+  document.getElementById('reflection').oninput=e=>{const x=load(c,u);x.reflection=e.target.value;save(c,u,x)};
+  document.getElementById('record').onclick=()=>startRecording(c,u);
+  document.getElementById('finish').onclick=()=>{const x=load(c,u);x.finished=true;save(c,u,x);nav('units',c)};
+}
+async function startRecording(c,u){
+  const status=document.getElementById('recordStatus'),button=document.getElementById('record');
+  if(recorder&&recorder.state==='recording'){recorder.stop();return}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    audioChunks=[];recorder=new MediaRecorder(stream);
+    recorder.ondataavailable=e=>{if(e.data.size)audioChunks.push(e.data)};
+    recorder.onstart=()=>{button.classList.add('recording');button.querySelector('span').textContent='Stop recording';status.textContent='Recording... aim for about 30 seconds.'};
+    recorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());const blob=new Blob(audioChunks,{type:recorder.mimeType||'audio/webm'});const reader=new FileReader();reader.onload=()=>{const x=load(c,u);x.audio=reader.result;save(c,u,x);renderAudio()};reader.readAsDataURL(blob)};
+    recorder.start();
+  }catch(e){status.textContent='Microphone access was not available. Check your browser permissions.'}
+}
+
+back.onclick=()=>{if(route.page==='units')nav('home');else if(route.page==='photos')nav('units',route.course);else if(route.page==='support')nav('photos',route.course,route.unit);else if(route.page==='audio')nav('support',route.course,route.unit)};
+render();
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install').hidden=false});
+document.getElementById('install').onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('install').hidden=true};
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
 </script>
 </body>
 </html>
