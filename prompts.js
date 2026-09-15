@@ -74,6 +74,16 @@ window.NAXOS4_PROMPTS = {
     if (l.includes('employment') || l.includes('small business') || l.includes('tax')) return 'What should you understand about employment, running a small business and tax in this industry?';
     return 'What do you need to know to carry out this part of the work correctly and safely?';
   },
+  statement(criterion) {
+    const l = String(criterion || '').replace(/^[A-Z]\d+:\s*/, '').toLowerCase();
+    if (l.includes('ownership')) return 'Explain how you took responsibility for the work from start to finish and made sure it was completed to the required standard.';
+    if (l.includes('health, safety') || l.includes('wellbeing')) return 'Explain how you put health, safety and wellbeing first while carrying out the work.';
+    if (l.includes('environment')) return 'Explain how you considered the environment and used resources responsibly while carrying out the work.';
+    if (l.includes('inclusive') || l.includes('diverse')) return 'Explain how you contributed to an inclusive and respectful working environment.';
+    if (l.includes('learning and development')) return 'Explain what you learned from the work and how you identified opportunities to develop further.';
+    if (l.includes('team-focus') || l.includes('team goals')) return 'Explain how you contributed to the team and helped achieve the wider build goal.';
+    return 'Explain how you approached the work, took responsibility for your part and made sure the required result was achieved.';
+  },
   audio(criterion) {
     const l = String(criterion || '').replace(/^[A-Z]\d+:\s*/, '').toLowerCase();
     if (l.includes('team working')) return 'Talk through how you worked with others on this task and what you did to help the team achieve the required result.';
